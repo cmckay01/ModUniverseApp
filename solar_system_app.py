@@ -101,7 +101,7 @@ class SolarSystemApp(QMainWindow):
         self.timer.start(50)  # 50 milliseconds
 
     def updateSimulation(self):
-        dt = 3600 * 24 # One day in seconds
+        dt = 3600 * 24 * 7 # One day in seconds
         self.solarSystem.calculate_all_body_interactions(dt)
         self.solarSystem.update_all(dt)
         self.updatePlot()
