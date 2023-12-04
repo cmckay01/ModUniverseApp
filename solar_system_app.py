@@ -8,6 +8,9 @@ from solar_system_body import SolarSystemBody
 from utilities import AU, G
 import regex as re
 
+#contant:
+sun_mass=1.989e+30
+
 class SolarSystemApp(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -39,6 +42,10 @@ class SolarSystemApp(QMainWindow):
         self.listBodiesButton.clicked.connect(self.listBodiesInfo)
         controlsLayout.addWidget(self.listBodiesButton)
 
+        #self.stableOrbitButton = QPushButton('Stable Orbit Calculator', self)
+        #self.stableOrbitButton.clicked.connect(self.showStableOrbitDialog)
+        #controlsLayout.addWidget(self.stableOrbitButton)
+
         self.addBodyButton = QPushButton('Add New Body', self)
         self.addBodyButton.clicked.connect(self.showNewBodyDialog)
         controlsLayout.addWidget(self.addBodyButton)
@@ -51,43 +58,74 @@ class SolarSystemApp(QMainWindow):
 
         layout = QFormLayout(dialog)
 
-        # Create line edits for user input
+        # Input fields for mass
         massEdit = QLineEdit(dialog)
         massUnitCombo = QComboBox(dialog)
         massUnitCombo.addItems(["kg", "Earth masses"])
-        positionEdit = QLineEdit(dialog)
-        positionUnitCombo = QComboBox(dialog)
-        positionUnitCombo.addItems(["m", "AU"])
+
+        # Input field for distance from Sun
+        distanceEdit = QLineEdit(dialog)
+        distanceUnitCombo = QComboBox(dialog)
+        distanceUnitCombo.addItems(["m", "AU"])
+
+        # Input field for velocity
         velocityEdit = QLineEdit(dialog)
 
         layout.addRow("Mass:", massEdit)
         layout.addRow("Mass Unit:", massUnitCombo)
-        layout.addRow("Position (x, y, z):", positionEdit)
-        layout.addRow("Position Unit:", positionUnitCombo)
+        layout.addRow("Distance from Sun:", distanceEdit)
+        layout.addRow("Distance Unit:", distanceUnitCombo)
         layout.addRow("Velocity (vx, vy, vz) in m/s:", velocityEdit)
 
+        # Info button
         infoButton = QPushButton("Info", dialog)
         infoButton.clicked.connect(self.showInfo)
         layout.addWidget(infoButton)
 
-        # Add standard buttons (OK and Cancel)
+        # Dialog buttons
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, dialog)
-    
-        # Connect the 'OK' button to addNewBody function with appropriate arguments
-        buttons.accepted.connect(lambda: self.addNewBody(
+        buttons.accepted.connect(lambda: self.calculate_and_add_body(
             massEdit.text(), 
             massUnitCombo.currentText(), 
-            positionEdit.text(), 
-            positionUnitCombo.currentText(), 
+            distanceEdit.text(), 
+            distanceUnitCombo.currentText(), 
             velocityEdit.text())
         )
-
         buttons.rejected.connect(dialog.reject)
         layout.addWidget(buttons)
 
         dialog.setLayout(layout)
         dialog.exec_()
+
+    def calculate_and_add_body(self, mass, massUnit, distance_str, distanceUnit, velocity_str):
+        # Parse distance and calculate suggested velocity
+        try:
+            # Convert distance from AU to meters if necessary
+            distance_components = self.parse_vector(distance_str)
+            if distanceUnit == "AU":
+                distance_components = tuple(d * AU for d in distance_components)
+            if len(distance_components) != 3:
+                raise ValueError("Invalid distance components")
+            distance = np.linalg.norm(distance_components)  # Actual distance from the sun
+        except ValueError as e:
+            QMessageBox.warning(self, "Input Error", f"Please enter valid numerical values for distance. Error: {e}")
+            return
+
+        suggested_velocity = (G * 1.989e+30 / distance)**0.5  # Sun's mass
+
+        # Show suggested velocity and limitations disclaimer
+        reply = QMessageBox.question(self, "Suggested Velocity",
+            f"Suggested Velocity for a stable orbit: {suggested_velocity:.2f} m/s\n\n"
+            "Note: This is an approximation assuming a circular orbit around the sun. "
+            "Other celestial bodies might influence the actual stability of the orbit.\n\n"
+            "Do you want to add the body with this velocity?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+        if reply == QMessageBox.Yes:
+            # Assuming initial position in the XY plane for simplicity
+            self.addNewBody(mass, massUnit, f"{distance_components[0]},{distance_components[1]},0", f"0,0,{suggested_velocity}")
     
+
     def showInfo(self):
         infoDialog = QDialog(self)
         infoDialog.setWindowTitle("Input Format and Examples")
@@ -111,19 +149,17 @@ class SolarSystemApp(QMainWindow):
         infoDialog.setLayout(infoLayout)
         infoDialog.exec_()
 
-    def addNewBody(self, mass, massUnit, position, positionUnit, velocity):
+    def addNewBody(self, mass, massUnit, position_str, velocity_str):
         # Convert mass based on selected unit
         mass = float(mass)
         if massUnit == "Earth masses":
             mass *= 5.97e24  # Earth's mass
 
-        # Parse and convert position based on selected unit
-        position = self.parse_vector(position)
-        if positionUnit == "AU":
-            position = tuple(p * AU for p in position)
+        # Parse position
+        position = self.parse_vector(position_str)
 
         # Parse velocity
-        velocity = self.parse_vector(velocity)
+        velocity = self.parse_vector(velocity_str)
 
         # Create a new SolarSystemBody and add it to the simulation
         new_body = SolarSystemBody(self.solarSystem, mass, 1e6, position, velocity)  # Set a default radius
@@ -136,7 +172,6 @@ class SolarSystemApp(QMainWindow):
         vector_str = vector_str.replace('AU', '').replace('au', '')
         vector_components = re.findall(r"[-+]?\d*\.\d+|\d+", vector_str)
         return tuple(map(float, vector_components))
-
     
     def parse_scientific_notation(self, s):
         """Parse a string in scientific notation."""
@@ -227,6 +262,15 @@ class SolarSystemApp(QMainWindow):
 
     def updatePlot(self):
         self.ax.clear()
+        self.ax.set_xlim([-1e12, 1e12])  # Set fixed limits for x-axis
+        self.ax.set_ylim([-1e12, 1e12])  # Set fixed limits for y-axis
+        self.ax.set_zlim([-1e12, 1e12])  # Set fixed limits for z-axis
+        self.ax.clear()
         for body in self.solarSystem.bodies:
             body.draw(self.ax)
         self.canvas.draw()
+
+
+
+
+

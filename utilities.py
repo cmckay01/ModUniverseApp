@@ -29,3 +29,6 @@ def runge_kutta(body, dt, solar_system):
 
         body.position += (k1p + 2 * k2p + 2 * k3p + k4p) / 6
         body.velocity += (k1v + 2 * k2v + 2 * k3v + k4v) / 6
+
+def calculate_stable_orbital_velocity(mass_central_body, distance):
+    return np.sqrt(G * mass_central_body / distance)
