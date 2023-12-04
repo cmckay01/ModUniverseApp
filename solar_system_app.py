@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QPushButton, QHBoxLayout, QMessageBox
+from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QPushButton, QHBoxLayout, QMessageBox, QFormLayout, QLineEdit, QDialogButtonBox, QDialog, QLabel, QComboBox
 from PyQt5.QtCore import QTimer
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -6,6 +6,7 @@ import numpy as np
 from solar_system import SolarSystem
 from solar_system_body import SolarSystemBody
 from utilities import AU, G
+import regex as re
 
 class SolarSystemApp(QMainWindow):
     def __init__(self):
@@ -38,7 +39,114 @@ class SolarSystemApp(QMainWindow):
         self.listBodiesButton.clicked.connect(self.listBodiesInfo)
         controlsLayout.addWidget(self.listBodiesButton)
 
+        self.addBodyButton = QPushButton('Add New Body', self)
+        self.addBodyButton.clicked.connect(self.showNewBodyDialog)
+        controlsLayout.addWidget(self.addBodyButton)
+
         self.initSolarSystem()
+    
+    def showNewBodyDialog(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Add New Body")
+
+        layout = QFormLayout(dialog)
+
+        # Create line edits for user input
+        massEdit = QLineEdit(dialog)
+        massUnitCombo = QComboBox(dialog)
+        massUnitCombo.addItems(["kg", "Earth masses"])
+        positionEdit = QLineEdit(dialog)
+        positionUnitCombo = QComboBox(dialog)
+        positionUnitCombo.addItems(["m", "AU"])
+        velocityEdit = QLineEdit(dialog)
+
+        layout.addRow("Mass:", massEdit)
+        layout.addRow("Mass Unit:", massUnitCombo)
+        layout.addRow("Position (x, y, z):", positionEdit)
+        layout.addRow("Position Unit:", positionUnitCombo)
+        layout.addRow("Velocity (vx, vy, vz) in m/s:", velocityEdit)
+
+        infoButton = QPushButton("Info", dialog)
+        infoButton.clicked.connect(self.showInfo)
+        layout.addWidget(infoButton)
+
+        # Add standard buttons (OK and Cancel)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, dialog)
+    
+        # Connect the 'OK' button to addNewBody function with appropriate arguments
+        buttons.accepted.connect(lambda: self.addNewBody(
+            massEdit.text(), 
+            massUnitCombo.currentText(), 
+            positionEdit.text(), 
+            positionUnitCombo.currentText(), 
+            velocityEdit.text())
+        )
+
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+
+        dialog.setLayout(layout)
+        dialog.exec_()
+    
+    def showInfo(self):
+        infoDialog = QDialog(self)
+        infoDialog.setWindowTitle("Input Format and Examples")
+
+        infoText = """
+        <p><b>Mass:</b> Enter the mass in kilograms. Use scientific notation if needed (e.g., '5.97e24' or '5.97*10^24' for Earth's mass or as as a multiple of Earth's mass (e.g., '1' for Earth's mass).</p>
+        <p><b>Position:</b> Enter the position as x, y, z coordinates in meters. 
+        Separate values with commas (e.g., '-1.496e11, 0, 0' for Earth's position or for AU: '-1 AU, 0 AU, 0 AU' for Earth's position from the Sun.)</p>
+        <p><b>Velocity:</b> Enter the velocity as vx, vy, vz components in meters per second. 
+        Use commas to separate values (e.g., '0, 29780, 0' for Earth's velocity).</p>
+        """
+
+        infoLayout = QVBoxLayout()
+        infoLabel = QLabel(infoText, infoDialog)
+        infoLayout.addWidget(infoLabel)
+
+        closeButton = QPushButton("Close", infoDialog)
+        closeButton.clicked.connect(infoDialog.close)
+        infoLayout.addWidget(closeButton)
+
+        infoDialog.setLayout(infoLayout)
+        infoDialog.exec_()
+
+    def addNewBody(self, mass, massUnit, position, positionUnit, velocity):
+        # Convert mass based on selected unit
+        mass = float(mass)
+        if massUnit == "Earth masses":
+            mass *= 5.97e24  # Earth's mass
+
+        # Parse and convert position based on selected unit
+        position = self.parse_vector(position)
+        if positionUnit == "AU":
+            position = tuple(p * AU for p in position)
+
+        # Parse velocity
+        velocity = self.parse_vector(velocity)
+
+        # Create a new SolarSystemBody and add it to the simulation
+        new_body = SolarSystemBody(self.solarSystem, mass, 1e6, position, velocity)  # Set a default radius
+        new_body.color = 'green'  # Default color
+        self.solarSystem.add_body(new_body)
+        self.updatePlot()
+
+    def parse_vector(self, vector_str):
+        # Strip 'AU' if present and extract numbers
+        vector_str = vector_str.replace('AU', '').replace('au', '')
+        vector_components = re.findall(r"[-+]?\d*\.\d+|\d+", vector_str)
+        return tuple(map(float, vector_components))
+
+    
+    def parse_scientific_notation(self, s):
+        """Parse a string in scientific notation."""
+        # Regex to identify parts of scientific notation
+        match = re.search(r'([\d\.]+)\*?10\^?(\-?\d+)', s)
+        if match:
+            base, exponent = match.groups()
+            return float(base) * (10 ** float(exponent))
+        else:
+            return float(s)  # Fallback to normal float conversion
     
     def listBodiesInfo(self):
         info = []
