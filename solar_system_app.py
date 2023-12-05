@@ -5,6 +5,7 @@ from matplotlib.figure import Figure
 import numpy as np
 from solar_system import SolarSystem
 from solar_system_body import SolarSystemBody
+import math
 from utilities import AU, G
 import regex as re
 
@@ -19,7 +20,6 @@ class SolarSystemApp(QMainWindow):
         self.quiz_progress = 0
         self.initializeQuizQuestions()
 
-
     def initUI(self):
         self.setWindowTitle('Solar System Simulation')
         self.setGeometry(100, 100, 800, 600)
@@ -27,7 +27,7 @@ class SolarSystemApp(QMainWindow):
         self.setCentralWidget(self.central_widget)
 
         # Main layout for the central widget
-        mainLayout = QVBoxLayout(self.central_widget)  
+        mainLayout = QVBoxLayout(self.central_widget)
 
         self.canvas = FigureCanvas(Figure())
         self.ax = self.canvas.figure.add_subplot(111, projection='3d')
@@ -44,56 +44,62 @@ class SolarSystemApp(QMainWindow):
         controlMenu.addAction('Reset Orbit Trails', self.clearOrbitTrails)
         controlMenu.addAction('List Bodies Info', self.listBodiesInfo)
         controlMenu.addAction('Add New Body', self.showNewBodyDialog)
-        controlMenu.addAction('Reset Simulation', self.resetSimulation)  # Reset Simulation added here
+        controlMenu.addAction('Adjust Body Mass', self.showMassAdjustmentDialog)
+        controlMenu.addAction('Reset Simulation', self.resetSimulation)
 
         # Add action to the quiz menu
         quizMenu.addAction('Start Quiz', self.showQuiz)
 
-        # Checkbox to toggle mass adjustment sliders
-        self.adjustMassCheckbox = QCheckBox("Adjust Masses", self)
-        self.adjustMassCheckbox.stateChanged.connect(self.toggleMassSliders)
-        mainLayout.addWidget(self.adjustMassCheckbox)  # Add to main layout
-
         # A layout for sliders and their labels
         self.slidersLayout = QVBoxLayout()
-        self.massSliders = []
-        self.massLabels = []
+        mainLayout.addLayout(self.slidersLayout)
 
-        for body in self.solarSystem.bodies:
-            slider = QSlider(Qt.Horizontal, self)
-            slider.setMinimum(1)
-            slider.setMaximum(1000)
-            slider.setValue(100)  # default value
-            slider.valueChanged.connect(lambda value, b=body: self.adjustMass(value, b))
-            slider.setVisible(False)  # Hidden by default
-            self.massSliders.append(slider)
-
-            label = QLabel(f"Mass: {body.mass}", self)
-            label.setVisible(False)
-            self.massLabels.append(label)
-
-            self.slidersLayout.addWidget(label)
-            self.slidersLayout.addWidget(slider)
-
-        mainLayout.addLayout(self.slidersLayout)  # Add sliders layout to main layout
-
+        # Initialize solar system and mass sliders (w/ scale factor)
         self.initSolarSystem()
     
-    def toggleMassSliders(self, state):
-        isVisible = state == Qt.Checked
-        for slider, label in zip(self.massSliders, self.massLabels):
-            slider.setVisible(isVisible)
-            label.setVisible(isVisible)
+    def showMassAdjustmentDialog(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Adjust Masses")
 
-    def adjustMass(self, value, body):
-        body.mass = value  # Adjust mass of the body
-        # Update the label corresponding to this slider
-        index = self.solarSystem.bodies.index(body)
-        self.massLabels[index].setText(f"Mass: {value}")
+        layout = QFormLayout(dialog)
+
+        # Combo box for selecting the body
+        bodySelectCombo = QComboBox(dialog)
+
+        # Assign names based on index
+        body_names = ["Sun", "Earth", "Mars", "Jupiter"]
+        for i, body in enumerate(self.solarSystem.bodies):
+            name = body_names[i] if i < len(body_names) else f"Planet {i}"
+            bodySelectCombo.addItem(f"Body {i}: {name}", body)
+
+        layout.addRow("Select Body:", bodySelectCombo)
+
+        # Input field for new mass
+        newMassEdit = QLineEdit(dialog)
+        layout.addRow("New Mass (in Earth masses):", newMassEdit)
+
+        # Dialog buttons
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, dialog)
+        buttons.accepted.connect(lambda: self.adjustBodyMass(bodySelectCombo, newMassEdit))
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+
+        dialog.setLayout(layout)
+        dialog.exec_()
+
+    def adjustBodyMass(self, bodySelectCombo, newMassEdit):
+        # Get the selected body and new mass
+        body = bodySelectCombo.currentData()
+        new_mass = float(newMassEdit.text()) * 5.97e24  # Convert from Earth masses to kg
+
+        # Update the body's mass
+        body.mass = new_mass
+        self.updatePlot()
     
     def resetSimulation(self):
         # Reset the simulation
         self.initSolarSystem()  # Reinitialize the solar system
+        self.initMassSliders()
         self.updatePlot()
 
     def clearOrbitTrails(self):
