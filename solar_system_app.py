@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QPushButton, QHBoxLayout, QMessageBox, QFormLayout, QLineEdit, QDialogButtonBox, QDialog, QLabel, QComboBox, QRadioButton
-from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import numpy as np
@@ -14,6 +14,7 @@ sun_mass=1.989e+30
 class SolarSystemApp(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.solarSystem = SolarSystem()  # Instantiate SolarSystem object 
         self.initUI()
         self.quiz_progress = 0
         self.initializeQuizQuestions()
@@ -24,11 +25,13 @@ class SolarSystemApp(QMainWindow):
         self.setGeometry(100, 100, 800, 600)
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
-        layout = QVBoxLayout(self.central_widget)
-        
+
+        # Main layout for the central widget
+        mainLayout = QVBoxLayout(self.central_widget)  
+
         self.canvas = FigureCanvas(Figure())
         self.ax = self.canvas.figure.add_subplot(111, projection='3d')
-        layout.addWidget(self.canvas)
+        mainLayout.addWidget(self.canvas)
 
         # Create menu bar items
         menuBar = self.menuBar()
@@ -38,13 +41,66 @@ class SolarSystemApp(QMainWindow):
         # Add actions to the control menu
         controlMenu.addAction('Start Simulation', self.startSimulation)
         controlMenu.addAction('Toggle Orbit Trails', self.toggleOrbitTrails)
+        controlMenu.addAction('Reset Orbit Trails', self.clearOrbitTrails)
         controlMenu.addAction('List Bodies Info', self.listBodiesInfo)
         controlMenu.addAction('Add New Body', self.showNewBodyDialog)
+        controlMenu.addAction('Reset Simulation', self.resetSimulation)  # Reset Simulation added here
 
         # Add action to the quiz menu
         quizMenu.addAction('Start Quiz', self.showQuiz)
 
+        # Checkbox to toggle mass adjustment sliders
+        self.adjustMassCheckbox = QCheckBox("Adjust Masses", self)
+        self.adjustMassCheckbox.stateChanged.connect(self.toggleMassSliders)
+        mainLayout.addWidget(self.adjustMassCheckbox)  # Add to main layout
+
+        # A layout for sliders and their labels
+        self.slidersLayout = QVBoxLayout()
+        self.massSliders = []
+        self.massLabels = []
+
+        for body in self.solarSystem.bodies:
+            slider = QSlider(Qt.Horizontal, self)
+            slider.setMinimum(1)
+            slider.setMaximum(1000)
+            slider.setValue(100)  # default value
+            slider.valueChanged.connect(lambda value, b=body: self.adjustMass(value, b))
+            slider.setVisible(False)  # Hidden by default
+            self.massSliders.append(slider)
+
+            label = QLabel(f"Mass: {body.mass}", self)
+            label.setVisible(False)
+            self.massLabels.append(label)
+
+            self.slidersLayout.addWidget(label)
+            self.slidersLayout.addWidget(slider)
+
+        mainLayout.addLayout(self.slidersLayout)  # Add sliders layout to main layout
+
         self.initSolarSystem()
+    
+    def toggleMassSliders(self, state):
+        isVisible = state == Qt.Checked
+        for slider, label in zip(self.massSliders, self.massLabels):
+            slider.setVisible(isVisible)
+            label.setVisible(isVisible)
+
+    def adjustMass(self, value, body):
+        body.mass = value  # Adjust mass of the body
+        # Update the label corresponding to this slider
+        index = self.solarSystem.bodies.index(body)
+        self.massLabels[index].setText(f"Mass: {value}")
+    
+    def resetSimulation(self):
+        # Reset the simulation
+        self.initSolarSystem()  # Reinitialize the solar system
+        self.updatePlot()
+
+    def clearOrbitTrails(self):
+        # Implementation to clear the orbit trails
+        for body in self.solarSystem.bodies:
+            body.history.clear()
+        self.updatePlot()
     
     def showNewBodyDialog(self):
         dialog = QDialog(self)
@@ -241,7 +297,7 @@ class SolarSystemApp(QMainWindow):
         infoText = """
         <p><b>Mass:</b> Enter the mass in kilograms. Use scientific notation if needed (e.g., '5.97e24' or '5.97*10^24' for Earth's mass or as as a multiple of Earth's mass (e.g., '1' for Earth's mass).</p>
         <p><b>Position:</b> Enter the position as x, y, z coordinates in meters. 
-        Separate values with commas (e.g., '-1.496e11, 0, 0' for Earth's position or for AU: '-1 AU, 0 AU, 0 AU' for Earth's position from the Sun.)</p>
+        Separate values with commas (e.g., '-1.496e11, 0, 0' for Earth's position or for AU: '-1, 0, 0' for Earth's position from the Sun.)</p>
         <p><b>Velocity:</b> Enter the velocity as vx, vy, vz components in meters per second. 
         Use commas to separate values (e.g., '0, 29780, 0' for Earth's velocity).</p>
         """
@@ -335,10 +391,10 @@ class SolarSystemApp(QMainWindow):
         rogue_planet.color = 'black'  # Color it black to represent a black hole
         self.solarSystem.add_body(rogue_planet) """
 
-
-        """ # Black hole parameters
+        """
+        # Black hole parameters
         black_hole_mass = 1.989e+30 * 1000  # Mass 1000 times that of the Sun
-        black_hole_distance = 220 * AU  # A greater distance
+        black_hole_distance = 600 * AU  # A greater distance
         black_hole_velocity = (0, np.sqrt(G * self.sun.mass / black_hole_distance) / 3, 0)  # A slower initial velocity
 
         # Add the black hole
