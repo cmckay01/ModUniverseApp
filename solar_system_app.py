@@ -99,7 +99,6 @@ class SolarSystemApp(QMainWindow):
     def resetSimulation(self):
         # Reset the simulation
         self.initSolarSystem()  # Reinitialize the solar system
-        self.initMassSliders()
         self.updatePlot()
 
     def clearOrbitTrails(self):
