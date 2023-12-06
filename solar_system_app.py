@@ -431,9 +431,6 @@ class SolarSystemApp(QMainWindow):
 
     def updatePlot(self):
         self.ax.clear()
-        self.ax.set_xlim([-1e12, 1e12])  # Set fixed limits for x-axis
-        self.ax.set_ylim([-1e12, 1e12])  # Set fixed limits for y-axis
-        self.ax.set_zlim([-1e12, 1e12])  # Set fixed limits for z-axis
         self.ax.clear()
         for body in self.solarSystem.bodies:
             body.draw(self.ax)
