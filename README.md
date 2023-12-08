@@ -1,7 +1,7 @@
 # ModUniverseApp
 
 ## Description
-The Orbital Mechanics Simulation App is a sophisticated tool designed to simulate the gravitational interactions and orbital mechanics of celestial bodies. It leverages Newtonian physics to accurately model the movements and interactions of planets and other astronomical objects in a solar system.
+The ModUniverseApp is an educational tool designed to simulate the gravitational interactions and orbital mechanics of celestial bodies. It leverages Newtonian physics to accurately model the movements and interactions of planets and other astronomical objects in a solar system.
 
 ## Features
 - Real-time simulation of gravitational forces and celestial movements.
@@ -21,25 +21,23 @@ The Orbital Mechanics Simulation App is a sophisticated tool designed to simulat
 **Setup:**
 1. Clone the repository:
    ```sh
-   git clone https://github.com/[YourUsername]/Orbital-Mechanics-Simulation-App.git
+   git clone https://github.com/cmckay01/ModUniverseApp.git
 
 2. Clone the repository:
    ```sh
-   cd Orbital-Mechanics-Simulation-App
+   cd ModUniverseApp
 
 3. Install the dependencies:
    ```sh
    pip install -r requirements.txt
 
-**Usage:**
-```sh
-   python main.py
+**Usage:** 
+Run the app: python main.py
 
 **License:**
 This project is licensed under the MIT License - see the LICENSE.md file for details.
 
 **Author:**
-Ciaran J. McKay
-ciaran@ciaranjmckay.com
+Ciaran J. McKay, ciaran@ciaranjmckay.com
 
 
