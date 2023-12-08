@@ -31,9 +31,11 @@ The ModUniverseApp is an educational tool designed to simulate the gravitational
    ```sh
    pip install -r requirements.txt
 
-**Usage:** 
-Run the app: python main.py
-
+**Usage:**
+Run the app:
+```sh
+python main.py
+```
 **License:**
 This project is licensed under the MIT License - see the LICENSE.md file for details.
 
