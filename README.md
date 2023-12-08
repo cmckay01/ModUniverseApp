@@ -23,7 +23,7 @@ The ModUniverseApp is an educational tool designed to simulate the gravitational
    ```sh
    git clone https://github.com/cmckay01/ModUniverseApp.git
 
-2. Clone the repository:
+2. Navigate to project folder:
    ```sh
    cd ModUniverseApp
 
@@ -31,11 +31,10 @@ The ModUniverseApp is an educational tool designed to simulate the gravitational
    ```sh
    pip install -r requirements.txt
 
-**Usage:**
-Run the app:
-```sh
-python main.py
-```
+4. Run the app:
+   ```sh
+   python main.py
+
 **License:**
 This project is licensed under the MIT License - see the LICENSE.md file for details.
 
