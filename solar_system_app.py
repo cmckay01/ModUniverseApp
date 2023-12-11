@@ -148,6 +148,8 @@ class SolarSystemApp(QMainWindow):
         # Reset the simulation
         self.initSolarSystem()  # Reinitialize the solar system
         self.updatePlot()
+        # Set the default view after reset
+        self.setDefaultView()
 
     def clearOrbitTrails(self):
         # Implementation to clear the orbit trails
@@ -411,6 +413,9 @@ class SolarSystemApp(QMainWindow):
     def initSolarSystem(self):
         self.solarSystem = SolarSystem()
 
+        # Set the default view
+        self.setDefaultView()
+
         # Sun
         self.sun = SolarSystemBody(self.solarSystem, mass=1.989e+30, radius=696340000, position=(0, 0, 0), velocity=(0, 0, 0))
         self.sun.color = 'yellow'
@@ -476,19 +481,35 @@ class SolarSystemApp(QMainWindow):
         for body in self.solarSystem.bodies:
             body.show_trail = not body.show_trail
         self.updatePlot()
+    
+    def setDefaultView(self):
+    # Define a larger default axis limit to have a zoomed-out view
+        default_limit = AU * 17  # Adjust this value based on your solar system scale
+        self.ax.set_xlim(-default_limit, default_limit)
+        self.ax.set_ylim(-default_limit, default_limit)
+        self.ax.set_zlim(-default_limit, default_limit)
 
     def updatePlot(self):
-        # Store current axis limits if they exist
+        # Initialize current axis limits
+        current_xlim = current_ylim = current_zlim = None
+
+        # Check if the plot has data and if the user has zoomed in/out
         if self.ax.has_data():
             current_xlim = self.ax.get_xlim()
             current_ylim = self.ax.get_ylim()
             current_zlim = self.ax.get_zlim()
+            default_limit = AU * 17  # Ensure this matches the default limit set in setDefaultView
+
+            # Determine if the current view is significantly different from the default
+            use_current_limits = abs(current_xlim[0]) > default_limit * 0.8
         else:
-            current_xlim = current_ylim = current_zlim = None
+            # Set default view if no data is present
+            self.setDefaultView()
+            use_current_limits = False
 
         self.ax.clear()
-        
-        # Calculate bounds when trails are visible or bounds are not set
+
+        # Apply plot bounds based on the situation
         if any(body.show_trail for body in self.solarSystem.bodies) or self.plot_bounds is None:
             x_min, x_max, y_min, y_max, z_min, z_max = self.calculatePlotBounds()
             self.plot_bounds = (x_min, x_max, y_min, y_max, z_min, z_max)
@@ -506,13 +527,14 @@ class SolarSystemApp(QMainWindow):
 
         self.canvas.draw()
 
-        # Reapply the stored axis limits
-        if current_xlim is not None:
+        # Reapply the stored axis limits if custom zoom has been used
+        if use_current_limits and current_xlim is not None:
             self.ax.set_xlim(current_xlim)
             self.ax.set_ylim(current_ylim)
             self.ax.set_zlim(current_zlim)
 
         self.canvas.draw()
+
 
     def calculatePlotBounds(self):
         positions = []
