@@ -1,4 +1,42 @@
-from PyQt5.QtWidgets import *
+import sys
+from PyQt5.QtWidgets import QApplication
+from solar_system_app import SolarSystemApp
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ex = SolarSystemApp()
+    ex.show()
+    sys.exit(app.exec_())
+from solar_system_body import SolarSystemBody
+import numpy as np
+
+class SolarSystem:
+    def __init__(self):
+        self.bodies = []
+
+    def add_body(self, body):
+        self.bodies.append(body)
+
+    def update_all(self, dt):
+        for body in self.bodies:
+            body.move(dt)
+
+    def calculate_all_body_interactions(self, dt):
+        for body in self.bodies:
+            body.move(dt)
+
+
+    def check_collisions(self):
+        for i, body in enumerate(self.bodies):
+            for j, other_body in enumerate(self.bodies):
+                if i != j:
+                    distance = np.linalg.norm(body.position - other_body.position)
+                    if distance < (body.radius + other_body.radius):
+                        print(f"Collision detected between body {i} and body {j}")
+                        print(f"Distance: {distance}, Combined Radii: {body.radius + other_body.radius}")
+                        print(f"Positions: {body.position}, {other_body.position}")
+                        return (i, j), body.position
+        return None, Nonefrom PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -15,11 +53,11 @@ sun_mass=1.989e+30
 class SolarSystemApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.plot_bounds = None
         self.solarSystem = SolarSystem()  # Instantiate SolarSystem object 
         self.initUI()
         self.quiz_progress = 0
         self.initializeQuizQuestions()
+        self.plot_range = None  # Add this line to initialize plot range
 
     def initUI(self):
         self.setWindowTitle('Solar System Simulation')
@@ -414,62 +452,116 @@ class SolarSystemApp(QMainWindow):
         self.timer.start(50)  # 50 milliseconds
 
     def updateSimulation(self):
-        dt = 3600 * 24 * 7 # One day in seconds
+        dt = 3600 * 24  # One week in seconds
         self.solarSystem.calculate_all_body_interactions(dt)
         self.solarSystem.update_all(dt)
-        self.updatePlot()
         
+        # Check for collisions
         collision_info, collision_position = self.solarSystem.check_collisions()
         if collision_info is not None:
             self.timer.stop()
             body1, body2 = collision_info
             QMessageBox.information(self, "Collision Alert", f"Collision detected between bodies {body1} and {body2} at position {collision_position}.")
 
-    def toggleOrbitTrails(self):
-        for body in self.solarSystem.bodies:
-            body.show_trail = not body.show_trail
+        # Adjust plot limits if needed
+        self.adjustPlotLimitsIfNeeded()
         self.updatePlot()
+
+    def adjustPlotLimitsIfNeeded(self):
+        # Determine the current maximum extent of all bodies
+        max_extent = max(max(abs(body.position[i]) for body in self.solarSystem.bodies) for i in range(3))
+        
+        # Get current plot limits
+        xlim, ylim, zlim = self.ax.get_xlim(), self.ax.get_ylim(), self.ax.get_zlim()
+        current_limits = max(xlim[1], ylim[1], zlim[1])
+
+        # Update plot limits if any body is beyond the current limits
+        if max_extent > current_limits:
+            new_limit = max_extent * 1.1  # Add a 10% buffer
+            self.ax.set_xlim([-new_limit, new_limit])
+            self.ax.set_ylim([-new_limit, new_limit])
+            self.ax.set_zlim([-new_limit, new_limit])
+            self.plot_range = [self.ax.get_xlim(), self.ax.get_ylim(), self.ax.get_zlim()]  # Store the plot range
 
     def updatePlot(self):
         self.ax.clear()
-        
-        # Calculate bounds when trails are visible or bounds are not set
-        if any(body.show_trail for body in self.solarSystem.bodies) or self.plot_bounds is None:
-            x_min, x_max, y_min, y_max, z_min, z_max = self.calculatePlotBounds()
-            self.plot_bounds = (x_min, x_max, y_min, y_max, z_min, z_max)
-        else:
-            x_min, x_max, y_min, y_max, z_min, z_max = self.plot_bounds
-
-        # Set the plot limits
-        self.ax.set_xlim(x_min, x_max)
-        self.ax.set_ylim(y_min, y_max)
-        self.ax.set_zlim(z_min, z_max)
-
-        # Draw the bodies
         for body in self.solarSystem.bodies:
             body.draw(self.ax)
-
         self.canvas.draw()
 
-    def calculatePlotBounds(self):
-        positions = []
+    def toggleOrbitTrails(self):
         for body in self.solarSystem.bodies:
-            positions.extend(body.history)  # Include orbit trail positions
-            positions.append(body.position)  # Include current position
-
-        if not positions:
-            return -1, 1, -1, 1, -1, 1  # Default bounds if no bodies
-
-        positions = np.array(positions)
-        x_min, x_max = positions[:,0].min(), positions[:,0].max()
-        y_min, y_max = positions[:,1].min(), positions[:,1].max()
-        z_min, z_max = positions[:,2].min(), positions[:,2].max()
-
-        # Add some padding to the bounds
-        padding = max(x_max - x_min, y_max - y_min, z_max - z_min) * 0.1
-        return x_min-padding, x_max+padding, y_min-padding, y_max+padding, z_min-padding, z_max+padding
+            body.show_trail = not body.show_trail
+        if not body.show_trail and self.plot_range is not None:
+            self.ax.set_xlim(self.plot_range[0])
+            self.ax.set_ylim(self.plot_range[1])
+            self.ax.set_zlim(self.plot_range[2])
+        self.updatePlot()
 
 
 
 
 
+
+
+import numpy as np
+from utilities import runge_kutta, AU
+
+class SolarSystemBody:
+    def __init__(self, solar_system, mass, radius, position, velocity):
+        self.solar_system = solar_system
+        self.mass = mass
+        self.radius = radius  # Used for collision detection
+        self.position = np.array(position, dtype=np.float64)
+        self.velocity = np.array(velocity, dtype=np.float64)
+        self.history = []  # Store historical positions
+        self.show_trail = True
+
+        self.visual_radius = self.calculate_visual_radius()
+
+    def calculate_visual_radius(self):
+        # Simple example: scale radius based on cube root of mass
+        return (self.mass / 5.97e24)**(1/3) * 1e7  # Earth's mass as reference
+    
+    def draw(self, ax):
+        if self.show_trail and len(self.history) > 1:
+            ax.plot(*np.array(self.history).T, linestyle='-', marker='', color=self.color)
+        ax.scatter(*self.position, s=self.radius / AU * 100000, marker='o', color=self.color)
+
+    def move(self, dt):
+        runge_kutta(self, dt, self.solar_system)
+        self.history.append(self.position.copy())
+import numpy as np
+from scipy.constants import G
+
+# Constants
+G = G  # Gravitational constant from scipy.constants
+AU = 1.496e+11  # Astronomical unit in meters
+
+
+def runge_kutta(body, dt, solar_system):
+        def calculate_gravitational_acceleration(position):
+            acceleration = np.zeros_like(position)
+            for other_body in solar_system.bodies:
+                if other_body != body:
+                    distance_vector = other_body.position - position
+                    distance_mag = np.linalg.norm(distance_vector)
+                    force_mag = G * body.mass * other_body.mass / distance_mag**2
+                    force_direction = distance_vector / distance_mag
+                    acceleration += force_direction * force_mag / body.mass
+            return acceleration
+
+        k1v = calculate_gravitational_acceleration(body.position) * dt
+        k1p = body.velocity * dt
+        k2v = calculate_gravitational_acceleration(body.position + 0.5 * k1p) * dt
+        k2p = (body.velocity + 0.5 * k1v) * dt
+        k3v = calculate_gravitational_acceleration(body.position + 0.5 * k2p) * dt
+        k3p = (body.velocity + 0.5 * k2v) * dt
+        k4v = calculate_gravitational_acceleration(body.position + k3p) * dt
+        k4p = (body.velocity + k3v) * dt
+
+        body.position += (k1p + 2 * k2p + 2 * k3p + k4p) / 6
+        body.velocity += (k1v + 2 * k2v + 2 * k3v + k4v) / 6
+
+def calculate_stable_orbital_velocity(mass_central_body, distance):
+    return np.sqrt(G * mass_central_body / distance)
