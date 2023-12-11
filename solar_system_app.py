@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
+from PyQt5.QtGui import QKeySequence
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import numpy as np
@@ -30,9 +31,18 @@ class SolarSystemApp(QMainWindow):
         # Main layout for the central widget
         mainLayout = QVBoxLayout(self.central_widget)
 
+        # Initialize the canvas for Matplotlib
         self.canvas = FigureCanvas(Figure())
         self.ax = self.canvas.figure.add_subplot(111, projection='3d')
         mainLayout.addWidget(self.canvas)
+
+        # Set keyboard shortcuts for zooming
+        zoomInShortcut = QShortcut(QKeySequence("Ctrl+="), self)
+        zoomOutShortcut = QShortcut(QKeySequence("Ctrl+-"), self)
+
+        # Connect shortcuts to zoom functions
+        zoomInShortcut.activated.connect(self.zoomIn)
+        zoomOutShortcut.activated.connect(self.zoomOut)
 
         # Create menu bar items
         menuBar = self.menuBar()
@@ -57,6 +67,35 @@ class SolarSystemApp(QMainWindow):
 
         # Initialize solar system and mass sliders (w/ scale factor)
         self.initSolarSystem()
+
+    def adjustZoom(self, factor):
+        # Get current axis limits
+        x_min, x_max = self.ax.get_xlim()
+        y_min, y_max = self.ax.get_ylim()
+        z_min, z_max = self.ax.get_zlim()
+
+        # Calculate new limits
+        x_center = (x_max + x_min) / 2
+        y_center = (y_max + y_min) / 2
+        z_center = (z_max + z_min) / 2
+        x_range = (x_max - x_min) / 2 * factor
+        y_range = (y_max - y_min) / 2 * factor
+        z_range = (z_max - z_min) / 2 * factor
+
+        # Set new limits
+        self.ax.set_xlim(x_center - x_range, x_center + x_range)
+        self.ax.set_ylim(y_center - y_range, y_center + y_range)
+        self.ax.set_zlim(z_center - z_range, z_center + z_range)
+
+        self.canvas.draw()  # Redraw the canvas with new limits
+
+    def zoomIn(self):
+        # Zoom in logic
+        self.adjustZoom(0.8)
+
+    def zoomOut(self):
+        # Zoom out logic
+        self.adjustZoom(1.25)
     
     def showMassAdjustmentDialog(self):
         dialog = QDialog(self)
@@ -87,6 +126,14 @@ class SolarSystemApp(QMainWindow):
 
         dialog.setLayout(layout)
         dialog.exec_()
+
+    def adjust_axes_limits(self, scale_factor):
+        # Adjust each axis by the scale factor
+        for axis in [self.ax.xaxis, self.ax.yaxis, self.ax.zaxis]:
+            min_val, max_val = axis.get_view_interval()
+            mid_val = (max_val + min_val) / 2
+            range_val = (max_val - min_val) / 2 * scale_factor
+            axis.set_view_interval(mid_val - range_val, mid_val + range_val)
 
     def adjustBodyMass(self, bodySelectCombo, newMassEdit):
         # Get the selected body and new mass
@@ -431,6 +478,14 @@ class SolarSystemApp(QMainWindow):
         self.updatePlot()
 
     def updatePlot(self):
+        # Store current axis limits if they exist
+        if self.ax.has_data():
+            current_xlim = self.ax.get_xlim()
+            current_ylim = self.ax.get_ylim()
+            current_zlim = self.ax.get_zlim()
+        else:
+            current_xlim = current_ylim = current_zlim = None
+
         self.ax.clear()
         
         # Calculate bounds when trails are visible or bounds are not set
@@ -448,6 +503,14 @@ class SolarSystemApp(QMainWindow):
         # Draw the bodies
         for body in self.solarSystem.bodies:
             body.draw(self.ax)
+
+        self.canvas.draw()
+
+        # Reapply the stored axis limits
+        if current_xlim is not None:
+            self.ax.set_xlim(current_xlim)
+            self.ax.set_ylim(current_ylim)
+            self.ax.set_zlim(current_zlim)
 
         self.canvas.draw()
 
