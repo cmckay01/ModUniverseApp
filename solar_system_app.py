@@ -24,19 +24,21 @@ class SolarSystemApp(QMainWindow):
 
     def initUI(self):
         self.setWindowTitle('Solar System Simulation')
-        self.setGeometry(100, 100, 800, 600)
+        self.resize(800, 1000)  # Initial size, can expand beyond this
+
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
-        self.setStyleSheet("background-color: black;")
+        self.central_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        # Main layout for the central widget
         mainLayout = QVBoxLayout(self.central_widget)
+        mainLayout.setContentsMargins(0, 0, 0, 0)
+        mainLayout.setSpacing(0)
 
-        # Initialize the canvas for Matplotlib
         self.canvas = FigureCanvas(Figure())
+        self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.ax = self.canvas.figure.add_subplot(111, projection='3d')
         mainLayout.addWidget(self.canvas)
-
+            
         # Set keyboard shortcuts for zooming
         zoomInShortcut = QShortcut(QKeySequence("Ctrl+="), self)
         zoomOutShortcut = QShortcut(QKeySequence("Ctrl+-"), self)
@@ -72,6 +74,10 @@ class SolarSystemApp(QMainWindow):
 
         # Initialize solar system and mass sliders (w/ scale factor)
         self.initSolarSystem()
+    
+    def resizeEvent(self, event):
+        self.canvas.draw()
+        QMainWindow.resizeEvent(self, event)
 
     def adjustZoom(self, factor):
         # Get current axis limits
@@ -372,7 +378,7 @@ class SolarSystemApp(QMainWindow):
         infoDialog.exec_()
 
     def addNewBody(self, mass, massUnit, position_str, velocity_str):
-        # Convert mass based on selected unit
+    # Convert mass based on selected unit
         mass = float(mass)
         if massUnit == "Earth masses":
             mass *= 5.97e24  # Earth's mass
@@ -383,8 +389,14 @@ class SolarSystemApp(QMainWindow):
         # Parse velocity
         velocity = self.parse_vector(velocity_str)
 
+        # Calculate radius based on mass
+        # Here we use a simple cubic root scaling, adjust as needed
+        base_radius = 1e7  # Base radius for a reference mass
+        reference_mass = 5.97e24  # Earth's mass as reference
+        radius = base_radius * (mass / reference_mass) ** (1/3)
+
         # Create a new SolarSystemBody and add it to the simulation
-        new_body = SolarSystemBody(self.solarSystem, mass, 1e6, position, velocity)  # Set a default radius
+        new_body = SolarSystemBody(self.solarSystem, mass, radius, position, velocity)
         new_body.color = 'green'  # Default color
         self.solarSystem.add_body(new_body)
         self.updatePlot()
@@ -492,7 +504,7 @@ class SolarSystemApp(QMainWindow):
             current_xlim = current_ylim = current_zlim = None
 
         self.ax.clear()
-        
+
         # Calculate bounds when trails are visible or bounds are not set
         if any(body.show_trail for body in self.solarSystem.bodies) or self.plot_bounds is None:
             x_min, x_max, y_min, y_max, z_min, z_max = self.calculatePlotBounds()
@@ -517,9 +529,13 @@ class SolarSystemApp(QMainWindow):
             self.ax.set_ylim(current_ylim)
             self.ax.set_zlim(current_zlim)
 
+        self.ax.set_xticklabels([])
+        self.ax.set_yticklabels([])
+        self.ax.set_zticklabels([])
+
         self.canvas.draw()
 
-    def calculatePlotBounds(self):
+    """ def calculatePlotBounds(self):
         positions = []
         for body in self.solarSystem.bodies:
             positions.extend(body.history)  # Include orbit trail positions
@@ -535,8 +551,22 @@ class SolarSystemApp(QMainWindow):
 
         # Add some padding to the bounds
         padding = max(x_max - x_min, y_max - y_min, z_max - z_min) * 0.8
-        return x_min-padding, x_max+padding, y_min-padding, y_max+padding, z_min-padding, z_max+padding
+        return x_min-padding, x_max+padding, y_min-padding, y_max+padding, z_min-padding, z_max+padding """
+        
 
+    def calculatePlotBounds(self):
+        max_distance = 0
+        for body in self.solarSystem.bodies:
+            # Calculate distance of each body from the Sun (0, 0, 0)
+            distance = np.linalg.norm(body.position)
+            if distance > max_distance:
+                max_distance = distance
+
+        # Add some padding to the bounds
+        padding = max_distance * 0.2  # Adjust padding as needed
+
+        # Return symmetrical bounds around the Sun
+        return -max_distance-padding, max_distance+padding, -max_distance-padding, max_distance+padding, -max_distance-padding, max_distance+padding
 
 """ 
 ################### PLEASE KNOW #######################
