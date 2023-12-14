@@ -27,6 +27,7 @@ class SolarSystemApp(QMainWindow):
         self.setGeometry(100, 100, 800, 600)
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
+        self.setStyleSheet("background-color: black;")
 
         # Main layout for the central widget
         mainLayout = QVBoxLayout(self.central_widget)
@@ -64,6 +65,10 @@ class SolarSystemApp(QMainWindow):
         # A layout for sliders and their labels
         self.slidersLayout = QVBoxLayout()
         mainLayout.addLayout(self.slidersLayout)
+
+        #change the plot background color
+        self.ax.set_facecolor('black')
+
 
         # Initialize solar system and mass sliders (w/ scale factor)
         self.initSolarSystem()
@@ -529,10 +534,21 @@ class SolarSystemApp(QMainWindow):
         z_min, z_max = positions[:,2].min(), positions[:,2].max()
 
         # Add some padding to the bounds
-        padding = max(x_max - x_min, y_max - y_min, z_max - z_min) * 0.1
+        padding = max(x_max - x_min, y_max - y_min, z_max - z_min) * 0.8
         return x_min-padding, x_max+padding, y_min-padding, y_max+padding, z_min-padding, z_max+padding
 
 
+""" 
+################### PLEASE KNOW #######################
 
+!!!! PADDING IS EXTREMELY IMPORTANT !!!!
 
+(line 532: padding = max(x_max - x_min, y_max - y_min, z_max - z_min) * 0.1)
+this controls the initial view upon starting/restarting simulation.
 
+changing the last value (in this case 0.1) will adjust the starting view
+
+in tandem with the zoom feature, this allows for better simulation interaction.
+
+########### SOMEHOW THIS TOOK ME HOURS TO DEBUG.... ####################
+"""
