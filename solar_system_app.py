@@ -103,10 +103,12 @@ class SolarSystemApp(QMainWindow):
     def zoomIn(self):
         # Zoom in logic
         self.adjustZoom(0.8)
+        self.updatePlot()  # Redraw the plot
 
     def zoomOut(self):
         # Zoom out logic
         self.adjustZoom(1.25)
+        self.updatePlot()
     
     def showMassAdjustmentDialog(self):
         dialog = QDialog(self)
@@ -433,6 +435,21 @@ class SolarSystemApp(QMainWindow):
         self.sun.color = 'yellow'
         self.solarSystem.add_body(self.sun)
 
+        # Mercury
+        mercury_distance = 0.52 * AU
+        mercury_velocity = (0, 41309, 0)
+        mercury = SolarSystemBody(self.solarSystem, mass=3.285e+23, radius=2439500, position=(mercury_distance, 0, 0), velocity=mercury_velocity)
+        mercury.color = 'cornsilk'
+        self.solarSystem.add_body(mercury)
+
+        # Venus
+        venus_distance = 0.72 * AU
+        venus_velocity = (0, np.sqrt(G * self.sun.mass / venus_distance), 0)
+        venus = SolarSystemBody(self.solarSystem, mass=4.867e+24, radius=6052000, position=(-venus_distance, 0, 0), velocity=venus_velocity)
+        venus.color = 'chocolate'
+        self.solarSystem.add_body(venus)
+
+
         # Earth
         earth_velocity = (0, np.sqrt(G * self.sun.mass / AU), 0)
         earth = SolarSystemBody(self.solarSystem, mass=5.97e+24, radius=6371000, position=(-AU, 0, 0), velocity=earth_velocity)
@@ -449,9 +466,36 @@ class SolarSystemApp(QMainWindow):
         # Jupiter
         jupiter_distance = 5.2 * AU
         jupiter_velocity = (0, np.sqrt(G * self.sun.mass / jupiter_distance), 0)
-        jupiter = SolarSystemBody(self.solarSystem, mass=1.898e+27, radius=69911000, position=(-jupiter_distance, 0, 0), velocity=jupiter_velocity)
+        jupiter = SolarSystemBody(self.solarSystem, mass=1.898e+27, radius=71492000, position=(-jupiter_distance, 0, 0), velocity=jupiter_velocity)
         jupiter.color = 'orange'
         self.solarSystem.add_body(jupiter)
+
+        # Saturn
+        saturn_distance = 9.54 * AU
+        saturn_velocity = (0, np.sqrt(G * self.sun.mass / saturn_distance), 0)
+        saturn = SolarSystemBody(self.solarSystem, mass=5.683e+26, radius=60268000, position=(-saturn_distance, 0, 0), velocity=saturn_velocity)
+        saturn.color = 'green'
+        self.solarSystem.add_body(saturn)
+
+        # Uranus
+        uranus_distance = 19.2 * AU
+        uranus_velocity = (0, np.sqrt(G * self.sun.mass / uranus_distance), 0)
+        uranus = SolarSystemBody(self.solarSystem, mass=8.681e+25, radius=25559000, position=(-uranus_distance, 0, 0), velocity=uranus_velocity)
+        uranus.color = 'purple'
+        self.solarSystem.add_body(uranus)
+
+
+        # Neptune
+        neptune_distance = 30.06 * AU
+        neptune_velocity = (0, np.sqrt(G * self.sun.mass / neptune_distance), 0)
+        uranus = SolarSystemBody(self.solarSystem, mass=1.024e+26, radius=24764000, position=(-neptune_distance, 0, 0), velocity=neptune_velocity)
+        uranus.color = 'pink'
+        self.solarSystem.add_body(uranus)
+
+
+
+
+
 
         """ # Add a rogue planet or black hole
         rogue_mass = 1.989e+30 * 1000  # Mass 1000 times that of the Sun
@@ -533,26 +577,20 @@ class SolarSystemApp(QMainWindow):
         self.ax.set_yticklabels([])
         self.ax.set_zticklabels([])
 
+        # Draw and update the bodies
+        for body in self.solarSystem.bodies:
+            body.draw(self.ax)
+            body.update_visual_size(self.ax)
+
         self.canvas.draw()
 
-    """ def calculatePlotBounds(self):
-        positions = []
-        for body in self.solarSystem.bodies:
-            positions.extend(body.history)  # Include orbit trail positions
-            positions.append(body.position)  # Include current position
+        # Reapply the stored axis limits
+        if current_xlim is not None:
+            self.ax.set_xlim(current_xlim)
+            self.ax.set_ylim(current_ylim)
+            self.ax.set_zlim(current_zlim)
 
-        if not positions:
-            return -1, 1, -1, 1, -1, 1  # Default bounds if no bodies
-
-        positions = np.array(positions)
-        x_min, x_max = positions[:,0].min(), positions[:,0].max()
-        y_min, y_max = positions[:,1].min(), positions[:,1].max()
-        z_min, z_max = positions[:,2].min(), positions[:,2].max()
-
-        # Add some padding to the bounds
-        padding = max(x_max - x_min, y_max - y_min, z_max - z_min) * 0.8
-        return x_min-padding, x_max+padding, y_min-padding, y_max+padding, z_min-padding, z_max+padding """
-        
+        self.canvas.draw()    
 
     def calculatePlotBounds(self):
         max_distance = 0
@@ -569,11 +607,34 @@ class SolarSystemApp(QMainWindow):
         return -max_distance-padding, max_distance+padding, -max_distance-padding, max_distance+padding, -max_distance-padding, max_distance+padding
 
 """ 
+
+def calculatePlotBounds(self):
+        positions = []
+        for body in self.solarSystem.bodies:
+            positions.extend(body.history)  # Include orbit trail positions
+            positions.append(body.position)  # Include current position
+
+        if not positions:
+            return -1, 1, -1, 1, -1, 1  # Default bounds if no bodies
+
+        positions = np.array(positions)
+        x_min, x_max = positions[:,0].min(), positions[:,0].max()
+        y_min, y_max = positions[:,1].min(), positions[:,1].max()
+        z_min, z_max = positions[:,2].min(), positions[:,2].max()
+
+        # Add some padding to the bounds
+        padding = max(x_max - x_min, y_max - y_min, z_max - z_min) * 0.8
+        return x_min-padding, x_max+padding, y_min-padding, y_max+padding, z_min-padding, z_max+padding
+
+
+
+
+
 ################### PLEASE KNOW #######################
 
 !!!! PADDING IS EXTREMELY IMPORTANT !!!!
 
-(line 532: padding = max(x_max - x_min, y_max - y_min, z_max - z_min) * 0.1)
+(in above snippet: padding = max(x_max - x_min, y_max - y_min, z_max - z_min) * 0.1)
 this controls the initial view upon starting/restarting simulation.
 
 changing the last value (in this case 0.1) will adjust the starting view
