@@ -430,11 +430,12 @@ class SolarSystemApp(QMainWindow):
     def initSolarSystem(self):
         self.solarSystem = SolarSystem()
 
-        # Sun
+          # Sun
         self.sun = SolarSystemBody(self.solarSystem, mass=1.989e+30, radius=696340000, position=(0, 0, 0), velocity=(0, 0, 0))
         self.sun.color = 'yellow'
-        self.solarSystem.add_body(self.sun)
+        self.solarSystem.add_body(self.sun) 
 
+        
         # Mercury
         mercury_distance = 0.52 * AU
         mercury_velocity = (0, 41309, 0)
@@ -448,13 +449,14 @@ class SolarSystemApp(QMainWindow):
         venus = SolarSystemBody(self.solarSystem, mass=4.867e+24, radius=6052000, position=(-venus_distance, 0, 0), velocity=venus_velocity)
         venus.color = 'chocolate'
         self.solarSystem.add_body(venus)
-
+    
 
         # Earth
         earth_velocity = (0, np.sqrt(G * self.sun.mass / AU), 0)
         earth = SolarSystemBody(self.solarSystem, mass=5.97e+24, radius=6371000, position=(-AU, 0, 0), velocity=earth_velocity)
         earth.color = 'blue'
         self.solarSystem.add_body(earth)
+    
 
         # Mars
         mars_distance = 1.5 * AU
@@ -491,8 +493,6 @@ class SolarSystemApp(QMainWindow):
         uranus = SolarSystemBody(self.solarSystem, mass=1.024e+26, radius=24764000, position=(-neptune_distance, 0, 0), velocity=neptune_velocity)
         uranus.color = 'pink'
         self.solarSystem.add_body(uranus)
-
-
 
 
 
